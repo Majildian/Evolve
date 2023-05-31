@@ -976,8 +976,8 @@ export function mechanicsPage(content){
                 1: ['wiki.html#traits-species-genus_unfathomable'],
             }
         });
-        let subSection = createCalcSection(thralls, 'mechanics', 'thralls');
-        thrallsCalc(subsection);
+        let subSection = createCalcSection(thralls, 'mechanics', 'thrall');
+        thrallsCalc(subSection);
 
         infoBoxBuilder(thralls,{ name: 'thralls_cath', template: 'mechanics', label: loc('wiki_mechanics_thralls'), paragraphs: 1, h_level: false,
             para_data: {
