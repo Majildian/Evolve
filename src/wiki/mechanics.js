@@ -3,7 +3,7 @@ import { universeAffix } from './../achieve.js';
 import { loc } from './../locale.js';
 import { timeFormat, vBind, svgIcons, svgViewBox, calcGenomeScore } from './../functions.js';
 import { job_desc } from './../jobs.js';
-import { races, traits, planetTraits } from './../races.js';
+import { races, traits, planetTraits, fathomCheck } from './../races.js';
 import { atomic_mass } from './../resources.js';
 import { universe_types } from './../space.js';
 import { swissKnife } from './../tech.js';
@@ -976,6 +976,8 @@ export function mechanicsPage(content){
                 1: ['wiki.html#traits-species-genus_unfathomable'],
             }
         });
+        let subSection = createCalcSection(thralls, 'mechanics', 'thralls');
+        thrallsCalc(subsection);
 
         infoBoxBuilder(thralls,{ name: 'thralls_cath', template: 'mechanics', label: loc('wiki_mechanics_thralls'), paragraphs: 1, h_level: false,
             para_data: {
@@ -4142,4 +4144,266 @@ function tpShipsIntelCalc(info){
             }
         }
     });
+}
+
+function thrallsCalc(info){
+    let calc = $(`<div class="calc" id="thrallsCalc"></div>`)
+    info.append(calc);
+
+    let formula = $(`<div></div>`);
+    let variables = $(`<div></div>`);
+
+    calc.append(formula);
+    calc.append(variables);
+
+    let inputs = {
+        nightmare : { val : undefined },
+        fathom : { val : undefined },
+        psychic : { val : undefined },
+        torturer : { val : undefined },
+        first : { val : undefined },
+        first_amount : { val : undefined },
+        second : { val : undefined, vis : false },
+        second_amount : { val : undefined },
+        third : { val : undefined, vis : false },
+        third_amount : { val : undefined }
+    }
+
+    let show = {
+        thrall: { vis: false, val: undefined},
+        motivated: { vis: false, val: undefined}
+    }
+
+
+    formula.append(`
+        <div>
+            <h2 class="has-text-caution">${loc('wiki_calc_thralls_production')}</h2>
+        </div>
+        <div>
+            <span>({{ s.thrall.val, 'total' | generic }} - {{ s.motivated.val, 'unmotivated' | generic }}) * {{ i.fathom.val, 'fathom_multi' | generic }} * (1 + ({{ i.psychic.val, 'psychic' | generic }} * 0.05)) * {{ i.nightmare.val, 'nightmare' | generic }} / 5</span><span v-show="s.thrall.vis"> = +{{ | calcProduction }}%</span>
+        </div>
+        <div>
+            <h2 class="has-text-caution">${loc('wiki_calc_thralls_unmotivated')}</h2>
+        </div>
+        <div>
+            <span>ceil(({{ s.thrall.val, 'total' | generic }} - ({{ i.torturer.val, 'torturer' | generic }} * {{ i.nightmare.val, 'nightmare' | generic }} / 2)) / 3)</span v-show="s.motivated.vis"> = {{ | calcMotivation() }}<span></span>
+        </div>
+        <div>
+            <h2 class="has-text-caution">${loc(`wiki_calc_thralls_effect`, [i.first.val[name]])} </h2>
+        </div>
+        <div>
+            <span>raceEffect(i.first.val, i.first_amount.val)</span>
+        </div>
+        <div>
+            <h2 class="has-text-caution" v-show="i.second.vis">${loc(`wiki_calc_thralls_effect`, [i.second.val[name]])} </h2>
+        </div>
+        <div>
+            <span v-show="i.second.vis">raceEffect(i.second.val, i.second_amount.val)</span>
+        </div>
+        <div>
+            <h2 class="has-text-caution" v-show="i.third.vis">${loc(`wiki_calc_thralls_effect`, [i.third.val[name]])} </h2>
+        </div>
+        <div>
+            <span v-show="i.third.vis">raceEffect(i.third.val, i.second_amount.val)</span>
+        </div>
+    `)
+
+    let firstRaceSelector = $();
+    let secondRaceSelector = $();
+    let thirdRaceSelector = $();
+    Object.keys(races).filter(function(race){return races[race].basic()}).forEach(function(race){
+        firstRaceSelector.append(`
+        <b-dropdown-item v-on:click="pickRace('${race}', 'first')">{{ ${race} | raceLabel }}</b-dropdown-item>
+        `)
+        firstRaceSelector.append(`
+        <b-dropdown-item v-on:click="pickRace('${race}', 'second')">{{ ${race} | raceLabel }}</b-dropdown-item>
+        `)
+        firstRaceSelector.append(`
+        <b-dropdown-item v-on:click="pickRace('${race}', 'third')">{{ ${race} | raceLabel }}</b-dropdown-item>
+        `)
+    });
+        
+
+    variables.append(`
+        <div>
+            <div class="calcInput">
+                <div>
+                    <span>${loc('wiki_calc_thralls_race')}</span>
+                </div>
+                <div>
+                    <b-dropdown hoverable>
+                        <button class="button is-primary" slot="trigger">
+                            <span>{{ i.first.val | raceLabel }}</span>
+                            <i class="fas fa-sort-down"></i>
+                        </button>
+                        ${firstRaceSelector}
+                    </b-dropdown>
+                </div>
+            </div>
+            <div class="calcInput"><div><span>${loc(`wiki_calc_thralls_amount`, [i.first.val[name]])}</span></div><div><b-numberinput :input="val('first_amount')" min = "0" v-model="i.first_amount.val" :controls="false"></b-numberinput></div></div>
+            <div class="calcInput" v-show="i.second.vis">
+                <div>
+                    <span>${loc('wiki_calc_thralls_race')}</span>
+                </div>
+                <div>
+                    <b-dropdown hoverable>
+                        <button class="button is-primary" slot="trigger">
+                            <span>{{ i.first.val | raceLabel }}</span>
+                            <i class="fas fa-sort-down"></i>
+                        </button>
+                        ${secondRaceSelector}
+                    </b-dropdown>
+                </div>
+            </div>
+            <div class="calcInput" v-show="i.second.vis"><div><span>${loc(`wiki_calc_thralls_amount`, [i.second.val[name]])}</span></div><div><b-numberinput :input="val('second_amount')" min = "0" v-model="i.second_amount.val" :controls="false"></b-numberinput></div></div>
+            <div class="calcInput" v-show="i.third.vis">
+                <div>
+                    <span>${loc('wiki_calc_thralls_race')}</span>
+                </div>
+                <div>
+                    <b-dropdown hoverable>
+                        <button class="button is-primary" slot="trigger">
+                            <span>{{ i.first.val | raceLabel }}</span>
+                            <i class="fas fa-sort-down"></i>
+                        </button>
+                        ${thirdRaceSelector}
+                    </b-dropdown>
+                </div>
+            </div>
+            <div class="calcInput" v-show="i.third.vis"><div><span>${loc(`wiki_calc_thralls_amount`, [i.third.val[name]])}</span></div><div><b-numberinput :input="val('third_amount')" min = "0" v-model="i.third_amount.val" :controls="false"></b-numberinput></div></div>
+            <div class="calcInput"><span>${loc('wiki_calc_thralls_torturers')}</span> <b-numberinput :input="val('torturer')" min="0" v-model="i.torturer.val" :controls="false"></b-numberinput></div>
+            <div class="calcInput"><span>${loc('wiki_calc_thralls_nightmare')}</span> <b-numberinput :input="val('nightmare')" min="0" max="5" v-model="i.nightmare.val" :controls="false"></b-numberinput></div>
+            <div class="calcInput"><span>${loc('wiki_calc_thralls_fathom')}</span>
+                <button class="button is-primary" slot="trigger">
+                    <span>{{ i.fathom.val | traitLabel }}</span>
+                    <i class="fas fa-sort-down"></i>
+                </button>
+
+                <b-dropdown-item v-on:click="pickTrait(0, 'fathom')">{{ 0 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(0.25, 'fathom')">{{ 0.25 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(0.5, 'fathom')">{{ 0.5 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(1, 'fathom')">{{ 1 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(2, 'fathom')">{{ 2 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(3, 'fathom')">{{ 3 | traitLabel }} </b-dropdown-item>
+                
+            </div>
+            <div class="calcInput"><span>${loc('wiki_calc_thralls_psychic')}</span>
+                <button class="button is-primary" slot="trigger">
+                    <span>{{ i.psychic.val | traitLabel }}</span>
+                    <i class="fas fa-sort-down"></i>
+                </button>
+
+                <b-dropdown-item v-on:click="pickTrait(0, 'psychic')">{{ 0 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(0.25, 'psychic')">{{ 0.25 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(0.5, 'psychic')">{{ 0.5 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(1, 'psychic')">{{ 1 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(2, 'psychic')">{{ 2 | traitLabel }} </b-dropdown-item>
+                <b-dropdown-item v-on:click="pickTrait(3, 'psychic')">{{ 3 | traitLabel }} </b-dropdown-item>
+            </div>
+        </div>
+    `)
+
+    let calcTotalThralls = function () {
+        let result = 0;
+        if(inputs.first_amount.val !== undefined){
+            result += inputs.first_amount.val;
+        }
+        if(inputs.second.vis && inputs.second_amount.val !== undefined){
+            result += inputs.second_amount.val;
+        }
+        if(inputs.third.vis && inputs.third_amount.val !== undefined){
+            result += inputs.third_amount.val
+        }
+        return result;
+    }
+
+    vBind({
+        el: `#thrallsCalc`,
+        data: {
+            i: inputs,
+            s: show
+        },
+        methods: {
+            pickTrait(rank, type){
+                i[type].val = rank;
+            },
+            val(type){
+                if (inputs[type].val && inputs[type].val < 0){
+                    inputs[type].val = 0;
+                }
+            },
+            pickRace(type, position){
+                switch (position){
+                    case 'first':
+                        i.first.val = type;
+                        return;
+                    case 'second':
+                        i.second.val = type;
+                        return;
+                    case 'third':
+                        i.third.val = type;
+                        return;
+                    default:
+                        return;
+                }
+            },
+            raceEffect(type, amount){
+                if(amount > 100){ amount = 100; }
+                if(amount > inputs.torturer.val){
+                    amount -= Math.ceil((amount - torturer) / 3);
+                }
+                amount = amount / 100 * inputs.nightmare.val / 5;
+                switch(type){
+                    case 'antid':
+                        return "";
+                    case 'arraak':
+                        return "-"+(traits.resourceful.vars(1)[0]/100*amount).toFixed(2)+"% crafting costs.";
+                }
+            }
+        },
+        filters: {
+            raceLabel(race){
+                return race === undefined ? loc('wiki_calc_thralls_race') : race[name];
+            },
+            traitLabel(lbl){
+                return lbl === undefined ? loc('wiki_calc_trait_undefined') : lbl === 0 ? loc('wiki_calc_trait_unowned') : lbl;
+            },
+            generic(num, type){
+                if (num !== undefined) {
+                    return num;
+                }
+                return loc('wiki_calc_thralls_' + type);
+            },
+            calcProduction(){
+                show.thrall.vis = show.motivated.val !== undefined && inputs.fathom.val && inputs.fathom.val > 0 !== undefined && inputs.nightmare.val !== undefined && inputs.psychic.val !== undefined; 
+
+                if(show.thrall.vis){
+                    let prodBonus = calcTotalThralls();
+                    prodBonus -= show.motivated.val;
+                    prodBonus *= traits.unfathomable.vars(inputs.fathom.val)[2] *inputs.nightmare.val / 5;
+                    if(inputs.psychic.val > 0){
+                        prodBonus *= 1 + (traits.psychic.vars(inputs.psychic.val)[1] / 100);
+                    }
+                    show.thrall.val = prodBonus.toFixed(2);
+                }
+
+                return show.thrall.val;
+            },
+            calcMotivation(){
+                show.motivated.vis = inputs.torturer.val !== undefined && inputs.nightmare.val != undefined;
+
+                if(show.motivated.vis){
+                    let thralls = calcTotalThralls();
+                    if(thralls > inputs.torturer.val * inputs.nightmare.val / 2){
+                        show.motivated.val = Math.ceil((thralls - (inputs.torturer.val * inputs.nightmare.val / 2)) / 3);
+                    }
+                    else {
+                        show.motivated.val = 0;
+                    }
+                }
+                return show.motivated.val;
+            }
+        }
+    });
+
 }
